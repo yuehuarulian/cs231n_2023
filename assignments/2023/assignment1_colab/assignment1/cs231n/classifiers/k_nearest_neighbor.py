@@ -67,8 +67,8 @@ class KNearestNeighbor(object):
         num_test = X.shape[0]
         num_train = self.X_train.shape[0]
         dists = np.zeros((num_test, num_train))
-        for i in range(num_test):
-            for j in range(num_train):
+        for i in range(num_test): # 0-500
+            for j in range(num_train): # 0-5000
                 #####################################################################
                 # TODO:                                                             #
                 # Compute the l2 distance between the ith test point and the jth    #
@@ -77,7 +77,9 @@ class KNearestNeighbor(object):
                 #####################################################################
                 # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-                pass
+                matrix1 = X[i]
+                matrix2 = self.X_train[j]
+                dists[i][j] = np.sqrt(np.sum((matrix1-matrix2)**2)) # 欧氏距离
 
                 # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
@@ -101,7 +103,8 @@ class KNearestNeighbor(object):
             #######################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+            tmp = np.sqrt(np.sum(np.square(self.X_train - X[i]),axis=1)) # 5000*3072 - # 1*3072
+            dists[i:] = tmp
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
@@ -130,8 +133,11 @@ class KNearestNeighbor(object):
         #       and two broadcast sums.                                         #
         #########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        X1 = X # 500*3072
+        X2 = self.X_train # 5000*3072
+        x1x2 = np.dot(X1,X2.transpose())
+        dists = np.sum(np.square(X1),axis=1).reshape(-1,1) + np.sum(np.square(X2),axis=1).reshape(1,-1) - 2*x1x2
+        dists = np.sqrt(dists)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
@@ -164,7 +170,8 @@ class KNearestNeighbor(object):
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+            closest_y_index = np.argsort(dists[i])[0:k]
+            closest_y = [self.y_train[index] for index in closest_y_index]
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
             #########################################################################
@@ -176,7 +183,10 @@ class KNearestNeighbor(object):
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+            # 使用 np.bincount 统计每个元素的出现次数
+            counts = np.bincount(closest_y)
+            # 找出具有最大计数的元素索引
+            y_pred[i] = np.argmax(counts)
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
