@@ -55,7 +55,10 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        self.params["W1"] = np.random.normal(loc=0.0, scale=weight_scale, size=(input_dim, hidden_dim))
+        self.params["b1"] = np.zeros(shape=(hidden_dim))
+        self.params["W2"] = np.random.normal(loc=0.0, scale=weight_scale, size=(hidden_dim,num_classes))
+        self.params["b2"] = np.zeros(shape=(num_classes))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -89,6 +92,11 @@ class TwoLayerNet(object):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        # 前向传递
+        # 第一层
+        h1, cache_1 = affine_relu_forward(X, self.params["W1"], self.params["b1"])
+        h2, cache_2 = affine_forward(h1, self.params["W2"], self.params["b2"])
+        scores = h2
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -113,6 +121,15 @@ class TwoLayerNet(object):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        # 计算loss
+        loss, dscores = softmax_loss(scores, y) # dscores 是loss对scores的梯度， grads["W"] = dscores * dW
+        loss += (0.5 * self.reg * np.sum(self.params['W1'] * self.params['W1']) + 0.5 * self.reg * np.sum(self.params['W2'] * self.params['W2']))# 加上正则项
+
+        # 反向传播
+        dh1, dW2, db2 = affine_backward(dout=dscores, cache=cache_2)
+        dx, dW1, db1 = affine_relu_backward(dout=dh1, cache=cache_1)
+        grads['W2'], grads['b2'] = dW2 + self.reg * self.params['W2'], db2
+        grads['W1'], grads['b1'] = dW1 + self.reg * self.params['W1'], db1 # 加上正则项：正则项对weight的偏导数为2 * reg * W, 对bias的偏导数为0, 因此只需要在weight上加上正则项
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
