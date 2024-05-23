@@ -29,6 +29,9 @@ def affine_forward(x, w, b):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N = x.shape[0]
+    X_reshape = x.reshape((N,-1)) # (N,D)
+    out = X_reshape @ w + b # (N,M)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -62,6 +65,10 @@ def affine_backward(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N=x.shape[0]
+    db=np.sum(dout,axis=0) # (1,M)
+    dx=(dout @ w.T).reshape(x.shape) # (N,D)
+    dw=x.reshape((N,-1)).T @ dout # (N,M)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -87,7 +94,7 @@ def relu_forward(x):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out=x * (x>=0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -114,7 +121,7 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dx = np.ones(x.shape) * (x>0) * dout
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -773,7 +780,18 @@ def svm_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # 前向传播
+    N = x.shape[0]
+    s_yi = x[np.arange(N),y]
+    margins = np.maximum(0, x - s_yi.reshape(-1,1) + 1)
+    margins[np.arange(N),y] = 0
+    loss = np.sum(margins) / N # ？
+    
+    # 反向传播
+    grad_l = np.ones_like(x) * (margins > 0) # 将大于0的margin置为1，用作指示性函数.
+    positive_num_classes = np.sum(margins > 0, axis=1)  # 计算每个样本有多少个margin大于0. [N, 1]
+    grad_l[np.arange(N), y] -= positive_num_classes  # 将真实类别的梯度置为负值的样本数 (而其他类别设为+1, 不用管)
+    dx = grad_l * 1.0 / N
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -804,6 +822,24 @@ def softmax_loss(x, y):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    # 前向传递
+    exp_x = np.exp(x)
+    sum_exp_x = np.sum(exp_x, axis=1)
+    N = x.shape[0]
+    exp_s_yi = exp_x[np.arange(N), y]
+    l = exp_s_yi / sum_exp_x
+    log_l = -np.log(l)
+    loss = np.sum(log_l) / N
+
+    # 反向传播
+    grad_loss = 1.0 / N
+    grad_l = grad_loss * -1 / l.reshape((-1,1))
+    tmp = (-exp_s_yi / (sum_exp_x * sum_exp_x)).reshape(-1,1)
+    C = x.shape[1]
+    tmp = tmp @ np.ones((1,C))
+    tmp[np.arange(N), y] = (sum_exp_x - exp_s_yi) / (sum_exp_x * sum_exp_x)
+    grad_exp_x = grad_l * tmp
+    dx = grad_exp_x * exp_x
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
