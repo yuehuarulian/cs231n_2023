@@ -34,7 +34,31 @@ def softmax_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # 前向传播
+    # print(X.shape[0],X.shape[1],W.shape[1]) # N D 10
+    y_pre = X @ W # N*C
+    y_pre_exp = np.exp(y_pre)
+    y_pre_sum = np.sum(y_pre_exp,axis=1) # N*1
+    N = X.shape[0]
+    yi = y_pre_exp[np.arange(N),y]
+    y_i_sum = yi/y_pre_sum  # y1/y_sum
+    y_loss = -np.log(y_i_sum)  # -log(y_i_sum)
+    loss = np.mean(y_loss) + reg * np.sum(W * W)
+
+    # 反向传播
+    grad_loss = 1.0
+    grad_y_loss = np.ones((N,1)) * grad_loss / N # N*1
+    grad_y_i_sum = -1/y_i_sum.reshape(-1,1) * grad_y_loss # N * 1
+
+    C = W.shape[1]
+    temp = -yi.reshape(-1,1) @ np.ones((1,C)) # C = 10 D = 3072
+    temp[np.arange(N),y] = y_pre_sum - yi
+    # print((y_i_sum).shape,temp.shape)
+    grad_y_pre_exp = (temp / (y_pre_sum * y_pre_sum).reshape(-1,1)) * grad_y_i_sum # N * C
+
+    grad_y_pre = y_pre_exp * grad_y_pre_exp
+    grad_w = X.T @ grad_y_pre  # D * C
+    dW = grad_w + 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -59,7 +83,31 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # 前向传播
+    # print(X.shape[0],X.shape[1],W.shape[1]) # N D 10
+    y_pre = X @ W # N*C
+    y_pre_exp = np.exp(y_pre)
+    y_pre_sum = np.sum(y_pre_exp,axis=1) # N*1
+    N = X.shape[0]
+    yi = y_pre_exp[np.arange(N),y]
+    y_i_sum = yi/y_pre_sum  # y1/y_sum
+    y_loss = -np.log(y_i_sum)  # -log(y_i_sum)
+    loss = np.mean(y_loss) + reg * np.sum(W * W)
+
+    # 反向传播
+    grad_loss = 1.0
+    grad_y_loss = np.ones((N,1)) * grad_loss / N # N*1
+    grad_y_i_sum = -1/y_i_sum.reshape(-1,1) * grad_y_loss # N * 1
+
+    C = W.shape[1]
+    temp = -yi.reshape(-1,1) @ np.ones((1,C)) # C = 10 D = 3072
+    temp[np.arange(N),y] = y_pre_sum - yi
+    # print((y_i_sum).shape,temp.shape)
+    grad_y_pre_exp = (temp / (y_pre_sum * y_pre_sum).reshape(-1,1)) * grad_y_i_sum # N * C
+
+    grad_y_pre = y_pre_exp * grad_y_pre_exp
+    grad_w = X.T @ grad_y_pre  # D * C
+    dW = grad_w + 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
