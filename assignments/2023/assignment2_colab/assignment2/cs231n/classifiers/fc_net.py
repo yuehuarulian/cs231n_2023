@@ -75,6 +75,15 @@ class FullyConnectedNet(object):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        first_dim=[input_dim]+hidden_dims
+        second_dim=hidden_dims+[num_classes]
+        for i in range(self.num_layers):
+          self.params['W'+str(i+1)]=np.random.normal(0,weight_scale,(first_dim[i],second_dim[i]))
+          self.params['b'+str(i+1)]=np.zeros((second_dim[i]))
+        if self.normalization != None:
+          for i in range(self.num_layers-1):
+            self.params['gamma'+str(i+1)]=np.ones((first_dim[i+1]))
+            self.params['beta'+str(i+1)]=np.zeros((first_dim[i+1]))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -149,6 +158,39 @@ class FullyConnectedNet(object):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        # data=X.copy()
+        # affine_out=[]
+        # affine_cache=[]
+        # batchnorm_out=[]
+        # batchnorm_cache=[]
+        # relu_out=[]
+        # relu_cache=[]
+        # dropout_cache=[]
+        # dropout_out=[]
+        # out=X.copy()
+        # for i in range(self.num_layers - 1):
+        #   out, cache = affine_forward(out,self.params['W'+str(i+1)],self.params['b'+str(i+1)])
+        #   affine_out.append(out)
+        #   affine_cache.append(cache)
+        #   if self.normalization == "batchnorm":
+        #     out, cache = batchnorm_forward(out,self.params['gamma'+str(i+1)],self.params['beta'+str(i+1)],self.bn_params[i])
+        #     batchnorm_out.append(out)
+        #     batchnorm_cache.append(cache)
+        #   if self.normalization == "layernorm":
+        #     out,cache = layernorm_forward(out,self.params['gamma'+str(i+1)],self.params['beta'+str(i+1)],self.bn_params[i])
+        #     batchnorm_out.append(out)
+        #     batchnorm_cache.append(cache)
+        #   out,cache = relu_forward(out)
+        #   relu_out.append(out)
+        #   relu_cache.append(cache)
+        #   if self.use_dropout:
+        #     out,cache = dropout_forward(out,self.dropout_param)
+        #     dropout_cache.append(cache)
+        #     dropout_out.append(out)
+
+        # scores,cache = affine_forward(out,self.params['W'+str(self.num_layers)],self.params['b'+str(self.num_layers)])
+        # affine_out.append(scores)
+        # affine_cache.append(cache)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
