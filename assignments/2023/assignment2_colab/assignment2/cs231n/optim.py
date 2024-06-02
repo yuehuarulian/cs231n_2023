@@ -42,6 +42,7 @@ def sgd(w, dw, config=None):
     config.setdefault("learning_rate", 1e-2)
 
     w -= config["learning_rate"] * dw
+    print("sgd")
     return w, config
 
 
@@ -68,7 +69,7 @@ def sgd_momentum(w, dw, config=None):
     # the next_w variable. You should also use and update the velocity v.     #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
+    print("sgd_momentum")
     pass
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -113,7 +114,7 @@ def rmsprop(w, dw, config=None):
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-
+    print("rmsprp")
     return next_w, config
 
 
@@ -153,10 +154,20 @@ def adam(w, dw, config=None):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    t = config["t"] + 1
+    m = config["beta1"] * config["m"] + (1 - config["beta1"]) * dw
+    mt = m / (1 - config["beta1"] ** t)
+    v = config["beta2"] * config["v"] + (1 - config["beta2"]) * dw ** 2
+    vt = v / (1 - config["beta2"] ** t)
+    next_w = w - config["learning_rate"] * mt / (np.sqrt(vt) + config["epsilon"])
+
+    config["t"] = t
+    config["m"] = m
+    config["v"] = v
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-
+    # print("adam")
     return next_w, config

@@ -26,6 +26,9 @@ def affine_forward(x, w, b):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N = x.shape[0]
+    X_reshape = x.reshape((N,-1)) # (N,D)
+    out = X_reshape @ w + b # (N,M)(100, 3072)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -58,6 +61,10 @@ def affine_backward(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N=x.shape[0]
+    db=np.sum(dout,axis=0) # (1,M)
+    dx=(dout @ w.T).reshape(x.shape) # (N,D)
+    dw=x.reshape((N,-1)).T @ dout # (N,M)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -83,6 +90,7 @@ def relu_forward(x):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    out=x * (x>=0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -109,6 +117,7 @@ def relu_backward(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    dx = np.ones(x.shape) * (x>0) * dout
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -138,6 +147,24 @@ def softmax_loss(x, y):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    # 前向传递
+    exp_x = np.exp(x)
+    sum_exp_x = np.sum(exp_x, axis=1)
+    N = x.shape[0]
+    exp_s_yi = exp_x[np.arange(N), y]
+    l = exp_s_yi / sum_exp_x
+    log_l = -np.log(l)
+    loss = np.sum(log_l) / N
+
+    # 反向传播
+    grad_loss = 1.0 / N
+    grad_l = grad_loss * -1 / l.reshape((-1,1))
+    tmp = (-exp_s_yi / (sum_exp_x * sum_exp_x)).reshape(-1,1)
+    C = x.shape[1]
+    tmp = tmp @ np.ones((1,C))
+    tmp[np.arange(N), y] = (sum_exp_x - exp_s_yi) / (sum_exp_x * sum_exp_x)
+    grad_exp_x = grad_l * tmp
+    dx = grad_exp_x * exp_x
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -217,6 +244,20 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        u = np.mean(x, axis=0) # 计算批均值（Batch Mean）
+        var = np.var(x, axis=0) # 方程
+        std = np.sqrt(var + eps) # 计算批标准差（Batch Standard Deviation）
+        x_hat = (x - u) / std # 标准化数据（Standardized Data）
+        out = gamma * x_hat + beta # 缩放和平移（Scaling and Shifting）
+
+        shape = bn_param.get('shape', (N, D))
+        axis = bn_param.get('axis', 0)
+        cache = x, u, var, std, x_hat, gamma, eps, shape, axis # 保存反向传播所需的变量
+
+        running_mean = momentum * running_mean + (1 - momentum) * u # 更新运行均值（Running Mean）
+        running_var = momentum * running_var + (1 - momentum) * var  # 更新运行方差（Running Variance）
+
+        # cache = (x, gamma, beta, x_hat, eps)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -232,6 +273,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        x_hat = (x - running_mean) / np.sqrt(running_var + eps) # 标准化数据（Standardized Data）
+        out = gamma * x_hat + beta # 缩放和平移（Scaling and Shifting）
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -273,6 +316,19 @@ def batchnorm_backward(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    x, u, var, std, x_hat, gamma, eps, (N, D), axis = cache
+    dgamma = np.sum(dout * x_hat, axis=axis) # (N, D) * (N, D) -> (D)
+    dbeta = np.sum(dout * 1, axis=axis)
+
+    dx_hat = dout * gamma # (N, D)
+    dvar = np.sum(dx_hat * (x - u) * -0.5 * (var + eps) ** -1.5, axis) # sum是为了把(N, D) -> (D),这样做是因为只涉及std u var 不涉及x，应当是(D)
+    dx_u1 = dvar * 2 * (x - u) / N
+    dx_u2 = dx_hat * 1 / std
+    dx_u = dx_u1 + dx_u2
+    du = np.sum(dx_u * -1, axis)
+    dx1 = dx_u * 1
+    dx2 = du * (np.ones_like(x) / N)
+    dx = dx1 + dx2
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -307,6 +363,14 @@ def batchnorm_backward_alt(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    x, u, var, std, x_hat, gamma, eps, (N, D), axis = cache
+    dgamma = np.sum(dout * x_hat, axis=0)  # 计算dgamma
+    dbeta = np.sum(dout, axis=0)  # 计算dbeta
+
+    dx_hat = dout * gamma  # 计算dx_hat
+    dvar = np.sum(dx_hat * (x - u) * -0.5 * (var + eps) ** -1.5, axis)
+    du = np.sum(dx_hat * -1 / std, axis=0) + dvar * np.sum(-2 * (x - u), axis=0) / N  # 计算du=-1/std + dvar*dvar/du
+    dx = dx_hat * (1 / std) + dvar * (2 * (x - u) / N) - du * (- 1 / N)  # 计算dx=1/std + du*du/dx + dvar*dvar/dx
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -352,6 +416,23 @@ def layernorm_forward(x, gamma, beta, ln_param):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+   	# 对输入数据求转置
+    x = x.T
+    gamma, beta = np.atleast_2d(gamma).T, np.atleast_2d(beta).T
+
+    # 直接复用bn代码
+    u = np.mean(x, axis=0) # 计算层均值（Layer Mean） (D, N) * (D, N) -> (N)
+    var = np.var(x, axis=0) # 方差
+    std = np.sqrt(var + eps) # 计算批标准差（Batch Standard Deviation）
+    x_hat = (x - u) / std # 标准化数据（Standardized Data）
+    out = gamma * x_hat + beta # 缩放和平移（Scaling and Shifting）
+
+    # 转置回来
+    out = out.T
+
+    shape = ln_param.get('shape', x.shape)
+    axis = ln_param.get('axis', 0)
+    cache = x, u, var, std, x_hat, gamma, eps, shape, axis # 保存反向传播所需的变量
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -386,6 +467,22 @@ def layernorm_backward(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    x, u, var, std, x_hat, gamma, eps, (D, N), axis = cache
+    dout = dout.T
+    dgamma = np.sum(dout * x_hat, axis=1) # (D, N) * (D, N) -> (D)
+    dbeta = np.sum(dout * 1, axis=1)
+
+    dx_hat = dout * gamma # (D, N)
+    dvar = np.sum(dx_hat * (x - u) * -0.5 * (var + eps) ** -1.5, axis) # sum是为了把(D, N) -> (N),这样做是因为只涉及std u var 不涉及x，应当是(D)
+    dx_u1 = dvar * 2 * (x - u) / N
+    dx_u2 = dx_hat * 1 / std
+    dx_u = dx_u1 + dx_u2
+    du = np.sum(dx_u * -1, axis)
+    dx1 = dx_u * 1
+    dx2 = du * (np.ones_like(x) / N)
+    dx = dx1 + dx2
+
+    dx = dx.T
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -432,6 +529,8 @@ def dropout_forward(x, dropout_param):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        mask = (np.random.rand(*x.shape)<p) / p
+        out = x*mask
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -444,6 +543,7 @@ def dropout_forward(x, dropout_param):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        out = x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -474,6 +574,7 @@ def dropout_backward(dout, cache):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        dx = dout * mask
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
