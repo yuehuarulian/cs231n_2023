@@ -35,6 +35,11 @@ def compute_saliency_maps(X, y, model):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    scores = model(X)
+    y_pre = scores.gather(1,y.view(-1,1)).squeeze()
+    y_pre_sum = y_pre.sum()
+    y_pre_sum.backward()
+    saliency, _ = torch.max(torch.abs(X.grad.data), dim=1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -77,6 +82,15 @@ def make_fooling_image(X, target_y, model):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    for i in range(100):
+        scores:torch.tensor = model(X_fooling)
+        y_pre = scores.max(1)
+        if y_pre == target_y:
+            break
+        loss = scores[:,target_y]
+        loss.backward()
+        X_fooling.data += learning_rate * X_fooling.grad.data / torch.norm(X_fooling.grad.data)
+        X_fooling.grad.data.zero_()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -95,6 +109,16 @@ def class_visualization_update_step(img, model, target_y, l2_reg, learning_rate)
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    # 计算分数
+    scores = model(img)
+    # 计算损失
+    loss = scores[0, target_y] - l2_reg * torch.sum(img ** 2)
+    # 反向传播
+    loss.backward()
+    # 梯度上升
+    img.data += learning_rate * img.grad.data / torch.norm(img.grad.data)
+    # 清空梯度，否则会梯度会累加
+    img.grad.data.zero_()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ########################################################################
