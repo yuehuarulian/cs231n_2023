@@ -619,6 +619,35 @@ def conv_forward_naive(x, w, b, conv_param):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N,C,H,W = x.shape
+    F,C,HH,WW = w.shape
+    pad = conv_param["pad"]
+    stride = conv_param["stride"]
+    H_out = int((H + 2 * pad - HH) / stride + 1)
+    W_out = int((W + 2 * pad - WW) / stride + 1)
+    # print(f"pad:{pad},stride:{stride},H:{H},HH:{HH},H_out:{H_out}")
+    # print(f"pad:{pad},stride:{stride},W:{W},WW:{WW},W_out:{W_out}")
+    # 给x的上下左右填充上pad个0
+    x_pad = np.pad(array=x, pad_width=((0, 0), (0, 0), (pad, pad), (pad, pad)), mode="constant", constant_values=0)
+    # 将卷积核w转换成F * (C * HH * WW)的矩阵 (便于使用矩阵乘法)
+    w_row = w.reshape(F, -1) # 生成空白输出便于后续循环填充
+    out = np.zeros((N, F, H_out, W_out))
+
+    # 开始卷积
+    for n in range(N):  # 遍历样本
+        for f in range(F):  # 遍历卷积核
+            for i in range(H_out):  # 遍历高
+                for j in range(W_out):  # 遍历宽
+                    # 获取当前卷积窗口
+                    window = x_pad[n, :, i * stride:i * stride + HH, j * stride:j * stride + WW]
+                    # 将卷积窗口拉成一行
+                    window_row = window.reshape(1, -1)
+                    # 计算当前卷积窗口和卷积核的卷积结果
+                    out[n, f, i, j] = np.sum(window_row * w_row[f, :]) + b[f]
+      
+	 # 将pad后的x存入cache (省的反向传播的时候在计算一次)
+    x = x_pad
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -647,6 +676,40 @@ def conv_backward_naive(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    # 获取一些需要用到的数据
+    x, w, b, conv_param = cache
+    N, C, H, W = x.shape  # N个样本，C个通道，H_input高，W_input宽
+    F, C_w_, HH, WW = w.shape  # F个卷积核, C_w_个通道，HH高，WW宽
+    stride = conv_param["stride"]  # 步长
+    pad = conv_param["pad"]  # 填充数量
+
+    # 计算卷积后的高和宽
+    H_out = int((H - HH) / stride + 1)
+    W_out = int((W - WW) / stride + 1)
+
+    # 给dx,dw,db分配空间
+    dx = np.zeros_like(x)
+    dw = np.zeros_like(w)
+    db = np.zeros_like(b)
+    
+    # print(dout.shape,x.shape)
+
+    for n in range(N):
+        for f in range(F):
+            for i in range(H_out):
+                for j in range(W_out):
+                    # 获取当前卷积窗口
+                    window = x[n, :, i * stride:i * stride + HH, j * stride:j * stride + WW]
+                    # out = x * w + b
+                    # 计算db
+                    db[f] += 1 * dout[n, f, i, j]
+                    # 计算dw
+                    dw[f] += window * dout[n, f, i, j]
+                    # 计算dx
+                    dx[n, :, i * stride:i * stride + HH, j * stride:j * stride + WW] += w[f] * dout[n, f, i, j]
+
+    # 去掉dx的pad
+    dx = dx[:, :, pad:H - pad, pad:W - pad]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -682,6 +745,30 @@ def max_pool_forward_naive(x, pool_param):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N,C,H,W = x.shape
+    pool_height = pool_param["pool_height"]
+    pool_width = pool_param["pool_width"]
+    stride = pool_param["stride"]
+    H_out = int((H - pool_height) / stride + 1)
+    W_out = int((W - pool_width) / stride + 1)
+    # print(f"pad:{pad},stride:{stride},H:{H},HH:{HH},H_out:{H_out}")
+    # print(f"pad:{pad},stride:{stride},W:{W},WW:{WW},W_out:{W_out}")
+    # 将卷积核w转换成F * (C * HH * WW)的矩阵 (便于使用矩阵乘法)
+    # w_row = w.reshape(F, -1) # 生成空白输出便于后续循环填充
+    out = np.zeros((N, C, H_out, W_out))
+
+    # 开始卷积
+    for n in range(N):  # 遍历样本
+        for c in range(C):  # 遍历卷积核
+            for i in range(H_out):  # 遍历高
+                for j in range(W_out):  # 遍历宽
+                    # 获取当前卷积窗口
+                    window = x[n, c, i * stride:i * stride + pool_height, j * stride:j * stride + pool_width]
+                    # 将卷积窗口拉成一行
+                    # window_row = window.reshape(1, -1)
+                    # 计算当前卷积窗口和卷积核的卷积结果
+                    out[n, c, i, j] = np.max(window)
+      
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -708,6 +795,27 @@ def max_pool_backward_naive(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    # 获取一些需要用到的数据
+    x, pool_param = cache
+    N, C, H, W = x.shape  # N个样本，C个通道，H_input高，W_input宽
+    pool_height = pool_param["pool_height"]
+    pool_width = pool_param["pool_width"]
+    stride = pool_param["stride"]
+    H_out = int((H - pool_height) / stride + 1)
+    W_out = int((W - pool_width) / stride + 1)
+
+    dx = np.zeros_like(x)
+    
+
+    for n in range(N):
+        for c in range(C):
+            for i in range(H_out):
+                for j in range(W_out):
+                    # 获取当前卷积窗口
+                    window = x[n, c, i * stride:i * stride + pool_height, j * stride:j * stride + pool_width]
+                    maxindex = np.argmax(window)
+                    # 计算dx
+                    dx[n, c, i * stride + maxindex // pool_width, j * stride + maxindex % pool_width] += dout[n, c, i, j]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -749,6 +857,10 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N, C, H, W = x.shape  # N个样本，C个通道，H高，W宽
+    x = np.moveaxis(x, 1, -1).reshape(-1, C)  # 将C通道放到最后，然后reshape成二维数组
+    out, cache = batchnorm_forward(x, gamma, beta, bn_param)  # 调用batchnorm_forward
+    out = np.moveaxis(out.reshape(N, H, W, C), -1, 1)  # 将C通道放到第二维，然后reshape成四维数组
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -782,6 +894,10 @@ def spatial_batchnorm_backward(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N, C, H, W = dout.shape  # N个样本，C个通道，H高，W宽
+    dout = np.moveaxis(dout, 1, -1).reshape(-1, C)  # 将C通道放到最后，然后reshape成二维数组
+    dx, dgamma, dbeta = batchnorm_backward(dout, cache)  # 调用batchnorm_forward
+    dx = np.moveaxis(dx.reshape(N, H, W, C), -1, 1)  # 将C通道放到第二维，然后reshape成四维数组
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -823,6 +939,18 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    N, C, H, W = x.shape  # N个样本，C个通道，H高，W宽
+
+    # 将C通道分成G组，每组有C//G个通道
+    x = x.reshape(N, G, C // G, H, W)  # reshape成五维数组
+    x_mean = np.mean(x, axis=(2, 3, 4), keepdims=True)  # 求均值
+    x_var = np.var(x, axis=(2, 3, 4), keepdims=True)  # 求方差
+    x_norm = (x - x_mean) / np.sqrt(x_var + eps)  # 归一化
+
+    x_norm = x_norm.reshape(N, C, H, W)  # reshape成四维数组
+    out = gamma * x_norm + beta  # 伸缩平移
+
+    cache = (x, x_norm, x_mean, x_var, gamma, beta, G, eps)  # 缓存变量
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
