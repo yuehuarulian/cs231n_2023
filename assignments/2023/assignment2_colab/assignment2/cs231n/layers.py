@@ -980,6 +980,23 @@ def spatial_groupnorm_backward(dout, cache):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     pass
+    x, x_norm, x_mean, x_var, gamma, beta, G, eps = cache  # 从缓存中取出变量
+    N, C, H, W = dout.shape  # N个样本，C个通道，H高，W宽
+
+    # 计算dgamma和dbeta
+    dgamma = np.sum(dout * x_norm, axis=(0, 2, 3), keepdims=True)  # 求dgamma
+    dbeta = np.sum(dout, axis=(0, 2, 3), keepdims=True)  # 求dbeta
+
+    # 准备数据
+    x = x.reshape(N, G, C // G, H, W)  # reshape成五维数组
+
+    m = C // G * H * W
+    dx_norm = (dout * gamma).reshape(N, G, C // G, H, W)
+    dx_var = np.sum(dx_norm * (x - x_mean) * (-0.5) * np.power((x_var + eps), -1.5), axis=(2, 3, 4), keepdims=True)
+    dx_mean = np.sum(dx_norm * (-1) / np.sqrt(x_var + eps), axis=(2, 3, 4), keepdims=True) + dx_var * np.sum(-2 * (x - x_mean), axis=(2, 3, 4),
+                                                                                                             keepdims=True) / m
+    dx = dx_norm / np.sqrt(x_var + eps) + dx_var * 2 * (x - x_mean) / m + dx_mean / m
+    dx = dx.reshape(N, C, H, W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
