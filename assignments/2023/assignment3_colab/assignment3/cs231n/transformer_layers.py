@@ -39,6 +39,14 @@ class PositionalEncoding(nn.Module):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        # 创建一个 0 到 maxlen 的行向量并转为列向量 就相当于公式里的i
+        c = torch.arange(max_len).unsqueeze(dim=1)
+        # 获取公式中的矩阵的行向量
+        r = torch.pow(10000, -torch.arange(0, embed_dim, 2) / embed_dim)
+
+        # 计算p矩阵
+        pe[0,:,0::2] = torch.sin(c * r)
+        pe[0,:,1::2] = torch.cos(c * r)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -71,6 +79,7 @@ class PositionalEncoding(nn.Module):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        output = self.dropout(x + self.pe[:,:S,:])
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -166,6 +175,39 @@ class MultiHeadAttention(nn.Module):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        # 投影QKV
+        Q = self.query(query) # W^Q @ query
+        K = self.key(key)
+        V = self.value(value)
+
+        # 获取投影个数
+        H = self.n_head
+        # 获取投影维度
+        D = self.head_dim
+
+        # 矩阵分割 与 转置 这里需要结合QKV的形状来理解
+        Q = Q.reshape(N, S, H, D).transpose(1, 2)  # (N, S, E) -> (N, H, S, D)
+        K = K.reshape(N, T, H, D).transpose(1, 2)  # (N, T, E) -> (N, H, T, D)
+        V = V.reshape(N, T, H, D).transpose(1, 2)  # (N, T, E) -> (N, H, T, D)
+
+        # 矩阵乘法算权重  (N, H, S, K) * (N, H, K, T) -> (N, H, S, T)
+        # Q @ K.T
+        energy = torch.matmul(Q, K.transpose(2, 3)) / math.sqrt(D) # (N, H, S, T)
+
+        # 判断是否需要mask
+        if attn_mask != None:
+            energy = energy.masked_fill(mask=attn_mask==0, value=float('-inf'))
+
+        # softmax
+        energy = torch.softmax(energy, dim=3)
+        energy = self.attn_drop(energy)
+        # 计算加权和  (N, H, S, T) * (N, H, T, D) -> (N, H, S, D)
+        Y = torch.matmul(energy, V)
+        
+
+        # (N, S, E)
+        Y = Y.transpose(1, 2).reshape(N, S, E)
+        output = self.proj(Y)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

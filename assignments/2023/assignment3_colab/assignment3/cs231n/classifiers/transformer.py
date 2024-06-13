@@ -91,6 +91,20 @@ class CaptioningTransformer(nn.Module):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        # 第一步，嵌入说明和添加位置编码 (N, T) -> (N, T, W) 其中 N 是批量大小，T 是序列长度，W 是嵌入维度
+        captions = self.embedding(captions)
+        captions = self.positional_encoding(captions) 
+
+        # 第二步，将图像特征投影到相同的维度 (N, D) -> (N, W) -> (N, T, W)
+        features = self.visual_projection(features).unsqueeze(1)
+
+        # 第三步，准备一个掩码（tgt_mask）来屏蔽说明中的未来时间步骤
+        tgt_mask = torch.tril(torch.ones((T, T), dtype=torch.bool))
+
+        # 第四部，将解码器特征应用于文本和图像嵌入以及tgt_mask
+        # scores: (N, T, W) -> (N, T, V)
+        scores = self.transformer(captions, features, tgt_mask=tgt_mask)
+        scores = self.output(scores)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
