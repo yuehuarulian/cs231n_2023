@@ -149,6 +149,42 @@ class CaptioningRNN:
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        # 第一步，使用全连接层，将图像特征转换为隐藏层的初始状态
+        h0, cache_h0 = affine_forward(features, W_proj, b_proj)
+        # 第二步，使用词嵌入层，将输入的单词转换为词向量
+        word_vector, cache_word_vector = word_embedding_forward(captions_in, W_embed)
+        # 第三步，使用RNN或者LSTM，将词向量序列转换为隐藏层状态序列
+        if self.cell_type == "rnn":
+            h, cache_h = rnn_forward(word_vector, h0, Wx, Wh, b)
+        elif self.cell_type == "lstm":
+            h, cache_h = lstm_forward(word_vector, h0, Wx, Wh, b)
+        # 第四步，使用全连接层，将隐藏层状态序列转换为词汇表上的得分序列
+        scores, cache_scores = temporal_affine_forward(h, W_vocab, b_vocab)
+        # 第五步，使用softmax，计算损失
+        loss, dscores = temporal_softmax_loss(scores, captions_out, mask)
+
+        # 反向传播
+        # 第四步，全连接层的反向传播
+        dh, dW_vocab, db_vocab = temporal_affine_backward(dscores, cache_scores)
+        # 第三步，RNN或者LSTM的反向传播
+        if self.cell_type == "rnn":
+            dword_vector, dh0, dWx, dWh, db = rnn_backward(dh, cache_h)
+        elif self.cell_type == "lstm":
+            dword_vector, dh0, dWx, dWh, db = lstm_backward(dh, cache_h)
+        # 第二步，词嵌入层的反向传播
+        dW_embed = word_embedding_backward(dword_vector, cache_word_vector)
+        # 第一步，全连接层的反向传播
+        dfeatures, dW_proj, db_proj = affine_backward(dh0, cache_h0)
+
+        # 将梯度保存到grads中
+        grads["W_proj"] = dW_proj
+        grads["b_proj"] = db_proj
+        grads["W_embed"] = dW_embed
+        grads["Wx"] = dWx
+        grads["Wh"] = dWh
+        grads["b"] = db
+        grads["W_vocab"] = dW_vocab
+        grads["b_vocab"] = db_vocab
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -217,6 +253,25 @@ class CaptioningRNN:
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         pass
+        # 第一步 初始化隐藏层状态
+        h, _ = affine_forward(features, W_proj, b_proj)
+        # 第二步 初始化第一个单词
+        word = np.repeat(self._start, N)
+        c = np.zeros_like(h)
+        # 第三步 生成后面的单词
+        for i in range(max_length):
+            # 第一步 生成第i个单词的词向量
+            word, _ = word_embedding_forward(word, W_embed)
+            # 第二步 生成第i个单词的隐藏层状态
+            if self.cell_type == "rnn":
+                h, _ = rnn_step_forward(word, h, Wx, Wh, b)
+            elif self.cell_type == "lstm":
+                h, c, _ = lstm_step_forward(word, h, c, Wx, Wh, b)
+            # 第三步 生成第i个单词的得分
+            scores, _ = affine_forward(h, W_vocab, b_vocab)
+            # 第四步 生成第i个单词的预测值 并记录到captions中，同时作为下一个单词的输入
+            word = np.argmax(scores, axis=1)
+            captions[:, i] = word
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
